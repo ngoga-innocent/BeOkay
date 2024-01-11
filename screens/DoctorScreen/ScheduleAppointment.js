@@ -9,8 +9,9 @@ import {
   Alert,
   Modal,
   SafeAreaView,
+  ActivityIndicator,
 } from "react-native";
-import { React, useState } from "react";
+import { React, useState,useEffect } from "react";
 import Header from "../../components/Header";
 import Entypo from "react-native-vector-icons/Entypo";
 import { COLORS, width, height } from "../../components/Colors";
@@ -25,6 +26,11 @@ import EvilIcons from "react-native-vector-icons/EvilIcons";
 import { Avatar } from "react-native-elements";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { TabView, TabBar } from "react-native-tab-view";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import Url from "../../Url";
+import Spinner from "react-native-loading-spinner-overlay";
+import Toast from "react-native-toast-message";
+//import { getDocProfile } from "../../components/getDoctorProfile";
 const ScheduleAppointment = ({ navigation }) => {
   const date = new Date().getDate();
   const hour = new Date().getHours();
@@ -35,96 +41,189 @@ const ScheduleAppointment = ({ navigation }) => {
   const [visibleDesc, setDescription] = useState();
   const [cancelappoint, setCanceled] = useState(false);
   const [index, setIndex] = useState(0);
+  const [isLoading, setIsLoading] = useState(false)
+  const [Appointments, setAppointments] = useState([])
+  const [AppointmentsLoading, setAppointmentLoading] = useState(false)
+  const [confirmLoading, setConfirmLoading] = useState(false)
+  const [consultations, setConsultations] = useState([])
+  const [markedDates,setMarkedDates]=useState({})
   const [routes] = useState([
     { key: "first", title: "Appointments & Schedule" },
     { key: "second", title: "My Calendar" },
   ]);
-  const status = {
-    pressue: 150,
-    lastilliness: "headache",
-    lastdrugs: "paracetamol",
-  };
-  // const user = {
-  //   name: "Jessica",
-  //   profile: require("../../assets/cuate.png"),
+  const [Profile,setProfile]=useState({})
+  
+  // const consultations = [
+  //   {
+  //     Image: require("../../assets/cuate.png"),
+  //     fname: "Michael",
+  //     sname: "Simpson",
+  //     time: "4:4pm",
+  //     date: "dEC 7",
+  //   },
+  //   {
+  //     Image: require("../../assets/amico.png"),
+  //     fname: "Michael",
+  //     sname: "Simpson",
+  //     time: "4:4pm",
+  //     date: "dEC 7",
+  //   },
+  //   {
+  //     Image: require("../../assets/amico.png"),
+  //     fname: "Michael",
+  //     sname: "Simpson",
+  //     time: "4:4pm",
+  //     date: "dEC 7",
+  //   },
+  //   {
+  //     Image: require("../../assets/amico.png"),
+  //     fname: "Michael",
+  //     sname: "Simpson",
+  //     time: "4:4pm",
+  //     date: "dEC 7",
+  //   },
+  // ];
+  const ConfirmAppointment = async (id) => {
+    setConfirmLoading(true)
+    const token = await AsyncStorage.getItem('token');
+    if (!token) {
+      return Toast.show({
+        text1: 'Login Details',
+        text2: 'please Login to Confirm Appointment',
+        type: 'error',
+        
+      })
+    }
+    var myHeaders = new Headers();
+    myHeaders.append("Authorization", `JWT ${token}`);
+  
+var raw = "";
+
+var requestOptions = {
+  method: 'PATCH',
+  headers: myHeaders,
+  body: raw,
+  redirect: 'follow'
+};
+
+fetch(`${Url}/doctor/appointments/?id=${id}`, requestOptions)
+  .then(response => response.json())
+  .then(result => {
+    if (result.is_confirmed) {
+      setAppointments(Appointments.filter((appointments)=>appointments.id !=id))
+      setConfirmLoading(false)
+      Toast.show({
+        autoHide:true,
+        text1: 'Confirmation',
+        text2: 'Appointment has been successfully confirmed',
+        type: 'success',
+        visibilityTime:5000,
+        
+      })
+    }
+    setConfirmLoading(false)
+  
+  })
+  .catch(error => {
+    Toast.show({
+      type: 'error',
+      text1: 'Error',
+      text2: error,
+      visibilityTime:5000
+    })
+  });
+  }
+  // const Profile = {
+  //   Image: require("../../assets/cuate.png"),
+  //   name: "Dr .Kanimba",
+  //   specialite: "Physiology",
+  //   rating: 4.4,
+  //   bio: "Attended Doctorates in Francais for specialization in Physiology",
   // };
-
-  const Appointment = [
-    {
-      date: "22 July 2023",
-      time: "10:30 AM",
-      title: "Medical Consultation",
-      patient: "Eric Gasana",
-      Image: require("../../assets/cuate.png"),
-      description:
-        "my head hurts and my body aches also in evening I feel cold with unmeasurable temperature ",
-    },
-    {
-      date: "22 July 2023",
-      time: "10:30 AM",
-      title: "Medical Consultation",
-      patient: "Eric Gasana",
-      Image: require("../../assets/cuate.png"),
-      description:
-        "my head hurts and my body aches also in evening I feel cold with unmeasurable temperature ",
-    },
-    {
-      date: "22 July 2023",
-      time: "10:30 AM",
-      title: "Medical Consultation",
-      patient: "Eric Gasana",
-      Image: require("../../assets/cuate.png"),
-      description:
-        "my head hurts and my body aches also in evening I feel cold with unmeasurable temperature ",
-    },
-    {
-      date: "22 July 2023",
-      time: "10:30 AM",
-      title: "Medical Consultation",
-      patient: "Eric Gasana",
-      Image: require("../../assets/cuate.png"),
-      description:
-        "my head hurts and my body aches also in evening I feel cold with unmeasurable temperature ",
-    },
-  ];
-
-  const consultations = [
-    {
-      Image: require("../../assets/cuate.png"),
-      fname: "Michael",
-      sname: "Simpson",
-      time: "4:4pm",
-      date: "dEC 7",
-    },
-    {
-      Image: require("../../assets/amico.png"),
-      fname: "Michael",
-      sname: "Simpson",
-      time: "4:4pm",
-      date: "dEC 7",
-    },
-    {
-      Image: require("../../assets/amico.png"),
-      fname: "Michael",
-      sname: "Simpson",
-      time: "4:4pm",
-      date: "dEC 7",
-    },
-    {
-      Image: require("../../assets/amico.png"),
-      fname: "Michael",
-      sname: "Simpson",
-      time: "4:4pm",
-      date: "dEC 7",
-    },
-  ];
-  const Profile = {
-    Image: require("../../assets/cuate.png"),
-    name: "Dr .Kanimba",
-    specialite: "Physiology",
-    rating: 4.4,
-    bio: "Attended Doctorates in Francais for specialization in Physiology",
+  useEffect(() => {
+  const fetchDoctorData = async () => {
+    setIsLoading(true);
+    try {
+      await getDoctor();
+      await GetAppointments();
+    } catch (error) {
+      console.error("Error fetching doctor data:", error);
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  fetchDoctorData();
+}, []);
+  const getDoctor = async () => {
+    setIsLoading(true)
+    const token = await AsyncStorage.getItem('token')
+    const id = await AsyncStorage.getItem('DocId')
+    if (!token) {
+      setIsLoading(false)
+      return alert('please first Login')
+    }
+    try {
+    const myHeaders = new Headers()
+    myHeaders.append('Authorization',`JWT ${token}`)
+    var requestOptions = {
+    method: 'GET',
+    headers: myHeaders,
+    redirect: 'follow'
+  };
+      fetch(`${Url}/doctor/profile`, requestOptions)
+        .then(response => response.json())
+        .then(result => {
+        setProfile(result)
+        setIsLoading(false)
+       }).catch(error=>console.log(error))
+      // const result = await response.json()
+      // if (!response.ok) {
+      //   setIsLoading(false)
+      //   return alert('failed to fetch your profile Data')
+      // }
+      // console.log(result.personal_information.profile_image)
+      // setProfile(result)
+      // setIsLoading(false)
+    } catch (error) {
+      console.log(error)
+    }
+  }
+  const GetAppointments = async () => {
+    setAppointmentLoading(true)
+    const token = await AsyncStorage.getItem('token')
+    if (!token) {
+      return
+    }
+    var myHeaders = new Headers();
+    myHeaders.append("Authorization", `JWT ${token} `);
+
+    var requestOptions = {
+      method: 'GET',
+      headers: myHeaders,
+      redirect: 'follow'
+    };
+
+await fetch(`${Url}/doctor/appointments`, requestOptions)
+  .then(response => response.json())
+  .then(result => {
+    setAppointments(result.filter((appointment)=>!appointment.is_confirmed ))
+    //console.log(result)
+    const confirmedAppointments =  result.filter((consultation) => consultation.is_confirmed)
+    setConsultations(confirmedAppointments)
+    const newMarkedDates = {}
+    confirmedAppointments.length !== 0 && (
+      confirmedAppointments.forEach(appoint => {
+        const date = appoint?.doctor_availability?.starting_date?.split('T')[0];
+        newMarkedDates[date]={ marked: true, dotColor: 'green',selected:true,selectedColor:COLORS.Issacolor};
+    })
+    )
+    setMarkedDates(newMarkedDates)
+    
+    setAppointmentLoading(false)
+  })
+  .catch(error => console.log('error', error));
+  }
   const CancelAppointment = () => {
     setCanceled(true);
   };
@@ -246,14 +345,37 @@ const ScheduleAppointment = ({ navigation }) => {
   // };
   const AppointmentView = () => (
     <View style={{}}>
+      {AppointmentsLoading ? <ActivityIndicator size='large' color={COLORS.Issacolor} /> : <>
+        {Appointments.length == 0 ? <Text>You have no unconfirmed Appointment</Text> : <>
+        <AppointmentList appointments={Appointments} />
+        </>}
+      </>}
+
+      
+      {/* <CalendarScreen /> */}
+      {/* <Button
+            onPress={() => navigation.navigate("history")}
+            text="Schedule an appoint"
+            style={{
+              height: height / 17,
+              backgroundColor: COLORS.doctor,
+              width: width - 30,
+              // marginTop: height / 14,
+            }}
+          /> */}
+    </View>
+  );
+  const AppointmentList = ({ appointments }) => {
+    return (
       <FlatList
         showsVerticalScrollIndicator={false}
         // style={{ height: height / 4 }}
-        data={Appointment}
+        data={appointments}
         renderItem={({ item, index }) => (
+          visibleDesc == index && confirmLoading ? <ActivityIndicator color={COLORS.Issacolor} size='large' /> : <>
           <TouchableOpacity
             onPress={() =>
-              visibleDesc === index
+              visibleDesc 
                 ? setDescription(null)
                 : setDescription(index)
             }
@@ -269,114 +391,58 @@ const ScheduleAppointment = ({ navigation }) => {
               marginVertical: height / 90,
               borderRadius: width / 20,
               padding: width / 60,
+              justifyContent: 'center',
             }}
           >
-            <View
-              style={{
-                flexDirection: "row",
-                // marginBottom: 5,
-                shadowColor: COLORS.white,
-                shadowOpacity: 1,
-                shadowRadius: 4,
-                zIndex: 7,
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                }}
-              >
-                <Avatar
-                  source={item.Image}
-                  size="medium"
-                  rounded
-                  containerStyle={{ borderWidth: 1 }}
-                />
-                <View style={{ marginLeft: 15 }}>
-                  <Text style={{ fontWeight: "bold", fontSize: 17 }}>
-                    {item.patient}
+            
+            <View className="flex flex-row justify-between px-1 items-center mb-2">
+              <View className="flex flex-row items-center">
+                <Avatar source={{ uri: item?.patient?.personal_information?.profile_image }} rounded size='medium' />
+                <View className="ml-2">
+                  <Text className="font-bold ">
+                    {item?.patient?.personal_information?.full_name}
                   </Text>
-                  <View style={{ flexDirection: "row", alignItems: "center" }}>
-                    <AntiDesign
-                      name="calendar"
-                      size={20}
-                      style={{ marginRight: width / 30 }}
-                    />
-                    <Text style={{ fontWeight: "600" }}>{item.date}</Text>
+                  <View className="flex flex-row items-center">
+                    <EvilIcons name="calendar" size={24} />
+                    <Text>{item?.doctor_availability?.starting_date?.split('T')[0]}</Text>
+                    
                   </View>
+                  
+                  {/* name,calendaicon and start date */}
                 </View>
               </View>
-              <View style={{ flexDirection: "row", alignItems: "center" }}>
-                <Ionicons name="time-sharp" size={20} />
-                <Text>{item.time}</Text>
+              <View>
+                <View className="flex flex-row items-center">
+                  <Ionicons name="time-sharp" size={25} />
+                  <Text>{item?.doctor_availability?.start_time }</Text>
+                </View>
+                {/* watch icon and start time */}
               </View>
-              <TouchableOpacity>
-                {visibleDesc === index ? (
-                  <AntiDesign name="up" size={20} />
-                ) : (
-                  <AntiDesign name="down" size={20} />
-                )}
-
-                {/* */}
-              </TouchableOpacity>
+              {/* ICON */}
+              {visibleDesc ==index ? <Entypo name="chevron-up" size={30} /> : <Entypo name="chevron-down" size={30 } />}
             </View>
-            {visibleDesc === index && (
-              <View style={{}}>
-                <Text style={{ paddingHorizontal: width / 10 }}>
-                  {item.description}
-                </Text>
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    alignSelf: "center",
-                    marginTop: 10,
-                  }}
-                >
-                  <TouchableOpacity
-                    style={[
-                      styles.button,
-                      {
-                        borderColor: COLORS.white,
-                        marginRight: 10,
-                        backgroundColor: COLORS.doctor,
-                      },
-                    ]}
-                  >
-                    <Text>ACCEPT</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => setCanceled(true)}
-                    style={[styles.button, { borderColor: "red" }]}
-                  >
-                    <Text>CANCEL</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
-          </TouchableOpacity>
+            {visibleDesc==index && <View className="flex flex-row items-center mt-5 gap-3">
+              <TouchableOpacity className={`rounded-lg px-2 py-3 bg-[#034b59]`}>
+                <Text className="text-white font-bold">View Appointment</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                className={`rounded-lg px-6 py-3 bg-green-600`}
+              onPress={()=>ConfirmAppointment(item.id)}
+              >
+                <Text className="text-white font-bold">Accept</Text>
+              </TouchableOpacity>
+              <TouchableOpacity className={`rounded-lg px-6 py-3 bg-red-700`}>
+                <Text className="text-white font-bold">Reject</Text>
+              </TouchableOpacity>
+            </View>}
+          </TouchableOpacity></>
         )}
-      />
-      {/* <CalendarScreen /> */}
-      {/* <Button
-            onPress={() => navigation.navigate("history")}
-            text="Schedule an appoint"
-            style={{
-              height: height / 17,
-              backgroundColor: COLORS.doctor,
-              width: width - 30,
-              // marginTop: height / 14,
-            }}
-          /> */}
-    </View>
-  );
-
+        />
+  )
+}
   const CalendarView = () => (
     <ScrollView>
-      <CalendarScreen />
+      <CalendarScreen markedDates={markedDates} />
     </ScrollView>
   );
   const renderScene = ({ route }) => {
@@ -392,6 +458,7 @@ const ScheduleAppointment = ({ navigation }) => {
   };
   return (
     <SafeAreaView style={styles.container}>
+       <Spinner visible={isLoading} color={COLORS.Issacolor} />
       <View style={{ paddingHorizontal: width / 30 }}>
         <View
           style={{
@@ -404,7 +471,8 @@ const ScheduleAppointment = ({ navigation }) => {
           <View style={{ flexDirection: "row", alignItems: "center" }}>
             <TouchableOpacity onPress={() => navigation.navigate("Docprofile")}>
               <Avatar
-                source={Profile.Image}
+                //source={Profile.image}
+                source={{uri: Profile?.personal_information?.profile_image || null}}
                 size="large"
                 rounded
                 containerStyle={{ borderWidth: 1 }}
@@ -412,13 +480,13 @@ const ScheduleAppointment = ({ navigation }) => {
             </TouchableOpacity>
             <View style={{ marginLeft: width / 20 }}>
               <Text style={{ fontSize: 18, fontWeight: "bold" }}>
-                {Profile.name}
+                {Profile?.personal_information?.username || 'loading..'}
               </Text>
-              <Text style={{ fontWeight: "700" }}>{Profile.specialite}</Text>
+              <Text style={{ fontWeight: "700" }}>{Profile?.specialties || 'Not specified'}</Text>
               <View style={{ flexDirection: "row", alignItems: "center" }}>
                 <EvilIcons name="star" color="orange" size={20} />
                 <Text style={{ fontSize: 17, marginLeft: width / 25 }}>
-                  {Profile.rating}
+                  {Profile?.rating || '3.5'}
                 </Text>
               </View>
             </View>
@@ -504,7 +572,7 @@ const ScheduleAppointment = ({ navigation }) => {
                   }}
                 >
                   <Avatar
-                    source={item.Image}
+                    source={{uri:item?.patient?.personal_information?.profile_image}}
                     rounded
                     size="medium"
                     containerStyle={{
@@ -519,7 +587,7 @@ const ScheduleAppointment = ({ navigation }) => {
                         { textTransform: "uppercase", fontSize: 16 },
                       ]}
                     >
-                      {item.time}
+                      {item?.doctor_availability?.start_time }
                     </Text>
                     <Text
                       style={[
@@ -531,7 +599,7 @@ const ScheduleAppointment = ({ navigation }) => {
                         },
                       ]}
                     >
-                      {item.date}
+                      {item?.doctor_availability?.starting_date?.split('T')[0] }
                     </Text>
                   </View>
                 </View>
@@ -539,18 +607,20 @@ const ScheduleAppointment = ({ navigation }) => {
                   <Text
                     style={[
                       styles.text,
-                      { textTransform: "capitalize", fontSize: 19 },
+                      { textTransform: "capitalize"},
                     ]}
+                    className="text-sm"
                   >
-                    {item.fname}
+                    {item?.patient?.personal_information?.full_name}
                   </Text>
                   <Text
                     style={[
                       styles.text,
-                      { textTransform: "capitalize", fontSize: 19 },
+                      { textTransform: "capitalize" },
                     ]}
+                    className="text-sm"
                   >
-                    {item.sname}
+                  {item?.patient?.personal_information?.username}
                   </Text>
                 </View>
                 <TouchableOpacity
@@ -577,80 +647,7 @@ const ScheduleAppointment = ({ navigation }) => {
           }}
         />
       </View>
-      {/* end copy */}
-      {/* <View style={{ marginTop: 20, flexDirection: "row" }}>
-        <Button
-          text="Appointment & Schedule"
-          style={{
-            backgroundColor: COLORS.doctor,
-            height: height / 20,
-            width: "60%",
-          }}
-          style1={{ fontSize: 15 }}
-        />
-        <Button
-          onPress={() => navigation.navigate("mycalendar")}
-          text="My Calendar"
-          style={{
-            backgroundColor: COLORS.backgrounds,
-            height: height / 20,
-            width: "30%",
-          }}
-          style1={{ fontSize: 15 }}
-        />
-      </View> */}
-
-      {/* <View
-        style={{
-          width: "90%",
-          margin: width / 12,
-          backgroundColor: COLORS.doctor,
-          padding: 8,
-          borderRadius: 10,
-        }}
-      >
-        <Text style={{ fontWeight: "bold", fontSize: 15 }}>
-          New Appointment Request
-        </Text>
-        <FlatList
-          pagingEnabled
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          data={newAppointment}
-          renderItem={({ item }) => {
-            return (
-              <TouchableOpacity
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  marginRight: 10,
-                  marginTop: 10,
-                }}
-              >
-                <View
-                  style={{
-                    width: width / 7,
-                    height: height / 16,
-                    borderRadius: 4,
-                    backgroundColor: COLORS.primary,
-                    marginTop: 5,
-                    marginRight: 10,
-                    justifyContent: "center",
-                    alignItems: "center",
-                  }}
-                >
-                  <Text>{item.date}</Text>
-                  <Text style={{ fontWeight: "bold" }}>{item.month}</Text>
-                </View>
-                <View>
-                  <Text>{item.title}</Text>
-                  <Text style={{ fontWeight: "bold" }}>{item.patient}</Text>
-                </View>
-              </TouchableOpacity>
-            );
-          }}
-        />
-      </View> */}
+      
 
       <View
         style={{
@@ -704,6 +701,7 @@ const ScheduleAppointment = ({ navigation }) => {
           )}
         />
       </View>
+      <Toast />
     </SafeAreaView>
   );
 };

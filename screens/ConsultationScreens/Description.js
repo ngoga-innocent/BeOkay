@@ -49,6 +49,11 @@ const Description = ({ navigation, route }) => {
     } else if (name === "homecare") {
       navigation.navigate("consultation", { screen: "homeCare" });
     }
+    else {
+      navigation.navigate("consultation", {
+        screen: "Aiconsultation",
+      });
+    }
     // const JWT = await AsyncStorage.getItem("token");
     // setLoading(true);
     // var myHeaders = new Headers();

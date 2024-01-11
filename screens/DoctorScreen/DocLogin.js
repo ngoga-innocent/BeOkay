@@ -1,15 +1,17 @@
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, StyleSheet,ScrollView,KeyboardAvoidingView } from "react-native";
 import { React, useState } from "react";
 import SignupHeader from "../loginScreens/SignupHeader";
 import { COLORS, height, width } from "../../components/Colors";
-import { TouchableOpacity } from "react-native-gesture-handler";
+import {  TouchableOpacity } from "react-native-gesture-handler";
 import KeyboardWrapper from "../../components/keyboardWrapper";
 import Button from "../../components/Button";
 import Input from "../../components/Input";
 import Icon from "react-native-vector-icons/Ionicons";
 import Spinner from "react-native-loading-spinner-overlay";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
+import Url from "../../Url";
+//import Toast from 'react-native-custom-toast'
+import Toast from "../../components/Toast";
 const DocLogin = ({ navigation }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -41,44 +43,76 @@ const DocLogin = ({ navigation }) => {
   const onPress = () => {
     setSecureText(false);
   };
-  const loginCheck = () => {
+  const getDocProfile = async (token) => {
+    // console.log('execute')
+          var myHeader = new Headers();
+          myHeader.append("Authorization", `JWT ${token}`);
+
+          var requestOption = {
+            method: 'GET',
+            headers: myHeader,
+            redirect: 'follow'
+          };
+
+    const response = await fetch(`${Url}/doctor/profile/`, requestOption)
+    const result = await response.json()
+    if (!response.ok) {
+    // return <Toast message="not Logged in " bg="green-400" />
+      setIsLoading(false)
+      alert('failed to login')
+    }
+    await AsyncStorage.setItem('DocId',result.id)    
+    navigation.replace("Docprofile");
+  }
+  const loginCheck = async () => {
+  try {
     if (accept) {
       setIsLoading(true);
-      var myHeaders = new Headers();
+      const myHeaders = new Headers();
       myHeaders.append("Content-Type", "application/json");
-      var raw = JSON.stringify({
+      const raw = JSON.stringify({
         username: email,
         password: password,
       });
-      var requestOptions = {
+      const requestOptions = {
         method: "POST",
         headers: myHeaders,
         body: raw,
         redirect: "follow",
       };
-      fetch("https://beok.onrender.com/login/", requestOptions)
-        .then((response) => response.json())
+      const response = await fetch(
+        `${Url}/login/`,
+        requestOptions
+      );
+      const res = await response.json();
 
-        .catch((error) => console.log("error", error))
-        .then((response) => {
-          const res = response;
-          if (res.access) {
-            setIsLoading(false);
-            AsyncStorage.setItem("token", res.access);
-            navigation.replace("Docprofile");
-          } else {
-            setIsLoading(false);
-            alert(res.detail);
-          }
-        });
+      if (res.access) {
+        setIsLoading(false);
+        try {
+          await AsyncStorage.setItem("token", res.access);
+           getDocProfile(res.access)
+        } catch (error) {
+          console.log(error)
+        }
+        //navigation.replace("Docprofile");
+      } else {
+        setIsLoading(false);
+        alert(res.detail);
+      }
     } else {
-      alert("please accept the agreement");
+      alert("Please accept the agreement");
     }
-  };
+  } catch (error) {
+    console.log("Error:", error);
+    setIsLoading(false);
+    // Handle other errors as needed
+  }
+};
+
 
   return (
-    <KeyboardWrapper>
-      <View style={styles.container}>
+    
+      <ScrollView style={styles.container}>
         <Spinner visible={isLoading} />
         <SignupHeader
           marginTop="1%"
@@ -96,7 +130,8 @@ const DocLogin = ({ navigation }) => {
           </Text>
           <TouchableOpacity onPress={() => navigation.navigate("Signup")}>
             <Text style={{ color: COLORS.primary }}>Signup</Text>
-          </TouchableOpacity>
+        </TouchableOpacity>
+        
         </View>
         <View
           style={{
@@ -200,8 +235,9 @@ const DocLogin = ({ navigation }) => {
             style={{ alignSelf: "center", color: COLORS.paragraph }}
           />
         </TouchableOpacity>
-      </View>
-    </KeyboardWrapper>
+      </ScrollView>
+    
+    
   );
 };
 const styles = StyleSheet.create({

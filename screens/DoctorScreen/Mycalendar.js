@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState,useEffect,useRef } from "react";
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   StyleSheet,
   SafeAreaView,
   TouchableOpacity,
+  ActivityIndicator
 } from "react-native";
 import Header from "../../components/Header";
 import { COLORS, height, width } from "../../components/Colors";
@@ -13,44 +14,175 @@ import Button from "../../components/Button";
 import { FlatList } from "react-native-gesture-handler";
 import DateTime from "../../components/DateTimePicker";
 import DatePicker from "../../components/DatePicker";
-import Entypo from "react-native-vector-icons/Entypo";
+import Entypo from "react-native-vector-icons/Entypo"
+import { Calendar, LocaleConfig,CalendarList } from 'react-native-calendars';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import AntDesign from 'react-native-vector-icons/AntDesign'
+import moment from 'moment'
+import Url from "../../Url";
 const Mycalendar = ({ navigation }) => {
-  const [selected, setSelected] = useState([0]);
+  const [selected, setSelected] = useState([]);
   const days = ["Mo", "Tu", "We", "Th", "fr", "Sa", "Su"];
   const [showModal, setShowModal] = useState(true);
+  const [loading, isLoading] = useState(false);
   const [date, setDate] = useState(new Date());
+  const [endDate, setEndDate] = useState(new Date())   
+  const [showTimerange,setShowTimeRange]=useState(false)
+  const [availability,setAvailability]=useState([])
+  const [starting,setStarting] = useState()
+  const [ending, setEnding] = useState()
+  const [selectedDate, setSelectedDate] = useState()
+  const [showTime,setShowTime]=useState(false)
+  const [weekDates, setWeekDates] = useState([]);
+  const [availableTime, setAvailabTime] = useState([])
+  const [loadingTime,setLoadingTime]=useState(false)
+const eventRef=useRef()
+  
+  LocaleConfig.locales['en'] = {
+    monthNames: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
+    monthNamesShort: ['Jan.', 'Feb.', 'Mar.', 'Apr.', 'May', 'Jun.', 'Jul.', 'Aug.', 'Sep.', 'Oct.', 'Nov.', 'Dec.'],
+    dayNames: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+    dayNamesShort: ['Sun.', 'Mon.', 'Tue.', 'Wed.', 'Thu.', 'Fri.', 'Sat.'],
+  };
+
+  LocaleConfig.defaultLocale = 'en';
+  useEffect(() => {
+    const getWeekDates = () => {
+      const startDate = moment(); // Today's date
+      const weekDatesArray = [];
+
+      for (let i = 0; i < 7; i++) {
+        const currentDate = startDate.clone().add(i, 'days');
+        const date = currentDate.format('YYYY-MM-DD');
+        const day = currentDate.format('ddd');
+
+        weekDatesArray.push({ date, day });
+      }
+
+      setWeekDates(weekDatesArray);
+    };
+    
+    getWeekDates();
+  }, []);
+  const handleTimeChange = (time) => {
+    setStarting(time)
+  }
+  const handleTime = (time) => {
+    setEnding(time)
+  }
+  const onDayPressed = async (day) => {
+    setSelectedDate(day.dateString);
+    
+  const yOffset = 300;
+
+  if (eventRef.current) {
+    eventRef.current.scrollTo({ y: yOffset, animated: true });
+  }
+
+  setShowTimeRange(true);
+
+  try {
+    const token = await AsyncStorage.getItem('token');
+    const date = day.dateString;
+
+    if (!token) {
+      return;
+    }
+
+    setLoadingTime(true);
+    setAvailabTime([])
+    const myHeaders = new Headers();
+    myHeaders.append("Authorization", `JWT ${token}`);
+
+    const requestOptions = {
+      method: 'GET',
+      headers: myHeaders,
+      redirect: 'follow',
+    };
+
+    const response = await fetch(`${Url}/doctor/availabilities-by-date/?date=${date}`, requestOptions);
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch availabilities');
+    }
+
+    const result = await response.json();
+    
+    setAvailabTime(result)
+
+
+    setLoadingTime(false);
+  } catch (error) {
+    console.log('Error:', error);
+    setLoadingTime(false);
+  }
+};
+
+  const addToAvailability = async() => {
+    // console.log(to)
+    // console.log(from)
+    // console.log(selectedDate)
+    // console.log(day.dateString)
+    isLoading(true)
+    const token = await AsyncStorage.getItem('token')
+    if (!token) {
+      return;
+    }
+//console.log(token) 
+var myHeaders = new Headers();
+myHeaders.append("Authorization", `JWT ${token}`);
+myHeaders.append("Content-Type", "application/json");
+
+var raw = JSON.stringify({
+  "starting_date": `${selectedDate}T${starting}Z`,
+  "ending_date": `${selectedDate}T${ending}Z`
+});
+
+var requestOptions = {
+  method: 'POST',
+  headers: myHeaders,
+  body: raw,
+  redirect: 'follow'
+};
+//console.log(raw)
+    fetch(`${Url}/doctor/availabilities/`, requestOptions)
+      .then(response => response.json())
+      .then(result => {
+        console.log(result)
+        setStarting()
+        setEnding()
+        //setShowTimeRange(!showTimerange)
+        isLoading(false)
+        const time = {
+          'start_time': `${result.start_time}`,
+          'end_time':`${result.end_time}`
+      }
+    setAvailabTime([...availableTime,time])
+  })
+  .catch(error => console.log('error', error));
+
+
+
+    const date = { "sarting_date": `${selectedDate}T${starting}Z`, "ending_date": `${selectedDate}T${ending}Z` }
+  //  console.log(date) 
+    setAvailability([...availability, date])
+    //setShowTimeRange(!showTimerange)
+    
+  }
+  const confirmAvailability = () => {
+    availability.map((available) => {
+      console.log(available)
+    })
+  }
   return (
-    <ScrollView style={{ flex: 1 }}>
+    <ScrollView style={{ flex: 1 }} ref={eventRef}>
       <Header
         style={{
           backgroundColor: COLORS.doctor,
           paddingHorizontal: width / 20,
         }}
       />
-      {/* <View style={{ marginTop: 20, flexDirection: "row" }}>
-        <Button
-          onPress={() => navigation.navigate("mycalendar")}
-          text="My Calendar"
-          style={{
-            backgroundColor: COLORS.doctor,
-            height: height / 20,
-            width: "30%",
-          }}
-          style1={{ fontSize: 15 }}
-        />
-      </View> */}
-      {/* <View
-        style={{
-          padding: width / 25,
-          backgroundColor: COLORS.warning,
-          borderRadius: width / 10,
-          width: "90%",
-          alignSelf: "center",
-          marginTop: height / 90,
-        }}
-      >
-        <Text>Schedule and Make Public your daily availability </Text>
-      </View> */}
+      
       {showModal && (
         <View style={styles.modal}>
           <View style={styles.modalheader}>
@@ -79,133 +211,91 @@ const Mycalendar = ({ navigation }) => {
       )}
       <View
         style={{
-          marginTop: height / 20,
+          marginTop: height / 40,
           paddingHorizontal: 16,
-          backgroundColor: COLORS.primary,
+          backgroundColor: '#034b59',
           flex: 2,
           height: "100%",
-          paddingVertical: height / 20,
+          paddingVertical: height / 30,
           borderRadius: width / 10,
           marginHorizontal: width / 30,
-
+          width:'100%',
           alignSelf: "center",
         }}
       >
-        <Text style={styles.headers}>My Availability</Text>
-        <FlatList
-          horizontal
-          data={days}
-          renderItem={({ item, index }) => {
-            return (
-              <View
-                style={{
-                  marginTop: 10,
-                  justifyContent: "center",
-                  alignItems: "center",
-                }}
-              >
-                <TouchableOpacity
-                  onPress={() => {
-                    if (selected.includes(index)) {
-                      const select = selected.filter((item) => item !== index);
-                      setSelected(select);
-                    } else {
-                      setSelected([...selected, index]);
-                    }
-                  }}
-                  style={[
-                    styles.availability,
-                    {
-                      backgroundColor: selected.includes(index)
-                        ? COLORS.doctor
-                        : COLORS.backgrounds,
-                    },
-                  ]}
-                >
-                  <Text style={{ fontWeight: "bold" }}>{item}</Text>
-                </TouchableOpacity>
-              </View>
-            );
+        <Text className="text-white font-bold text-lg">My Availability</Text>
+       
+        <Calendar
+          className="w-full rounded-lg "
+          minDate={new Date().toISOString().split('T')[0]}
+          onDayPress={onDayPressed}
+          theme={{
+            backgroundColor: '#034b59',
+            calendarBackground: '#034b59',
+            textSectionTitleColor: '#fff',
+            selectedDayBackgroundColor: '#00adf5',
+            selectedDayTextColor: '#ffffff',
+            todayTextColor: '#00adf5',
+            dayTextColor: '#ffffff',
+            textDisabledColor: 'gray',
           }}
+          selected={selectedDate}
+          
         />
-        <View style={{ marginTop: height / 40 }}>
-          <Text style={styles.headers}>Time Range</Text>
-          <View
+        {showTimerange && <View style={{ marginTop: height / 40 }}>
+          <View className="flex flex-row justify-between">
+            <Text className="font-bold text-white  ">Available Time</Text>
+            <TouchableOpacity onPress={()=>setShowTime(!showTime)}>
+              <AntDesign name="pluscircle" size={25} color={COLORS.white} />
+            </TouchableOpacity>
+          </View>
+          {loadingTime?<ActivityIndicator size="small" color='#034b59' />:<View>
+            {availableTime.length ==0?<Text className="text-xs font-bold text-white">no available time for this day added</Text>:availableTime.map((item, index) => {
+              return (
+                <Text key={index} className="font-semibold text-grey text-xs">
+                {item.start_time} - {item.end_time}
+              </Text>
+              )
+            })}
+          </View>}
+          {showTime && <><View
             style={{
-              flexDirection: "row",
-              justifyContent: "space-evenly",
-              marginTop: 15,
+              
             }}
+            className=" flex flex-row self-start gap-3"
           >
             <View>
-              <Text style={{ fontWeight: "700", fontSize: 17 }}>From</Text>
-              <DateTime mode="time" />
+              <Text style={{ fontWeight: "700", color:'white' }}>From</Text>
+              <DateTime mode="time"
+                date={date}
+                onTimeChange={handleTimeChange} />
             </View>
             <View>
-              <Text style={{ fontWeight: "700", fontSize: 17 }}>To</Text>
+              <Text style={{ fontWeight: "700",color:'white' }} className="">To</Text>
               <DateTime
                 mode="time"
                 style1={{ backgroundColor: COLORS.doctor }}
                 date={date}
+                onTimeChange={handleTime}
               />
             </View>
-          </View>
-        </View>
-        {/* <View style={{ marginTop: 15 }}>
-          <Text style={styles.headers}>Custom Availability</Text>
-          <Text
-            style={{
-              fontSize: 16,
-              fontWeight: "600",
-              marginTop: 20,
-              marginBottom: 20,
-            }}
-          >
-            Choose Date
-          </Text>
-          <View
-            style={{
-              width: width - 40,
-              height: height / 17,
-              backgroundColor: COLORS.backgrounds,
-              justifyContent: "space-between",
-              alignItems: "center",
-              borderRadius: width / 7,
-              flexDirection: "row",
-              paddingLeft: 20,
-            }}
-          >
-            <DatePicker />
-          </View>
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-evenly",
-              marginTop: 15,
-            }}
-          >
             <View>
-              <Text style={{ fontWeight: "700", fontSize: 17 }}>From</Text>
-              <DateTime mode="time" />
-            </View>
-            <View>
-              <Text style={{ fontWeight: "700", fontSize: 17 }}>To</Text>
-              <DateTime mode="time" />
+              <Text />
+              <TouchableOpacity onPress={addToAvailability}
+              className="self-center  px-4 py-1 mx-6 rounded-md bg-blue-400 ">
+              
+              <Text className="font-bold text-white">Ok</Text>
+            </TouchableOpacity>
             </View>
           </View>
-        </View> */}
+          {loading && <ActivityIndicator size="large" color='#034b59'/>}
+          
+          </> }
+
+        </View>}
+        
       </View>
-      <Button
-        onPress={() => navigation.navigate("history")}
-        text="Confirm Availability"
-        style={{
-          width: width - 20,
-          height: height / 17,
-          backgroundColor: COLORS.doctor,
-          marginTop: 20,
-        }}
-        style1={{ color: COLORS.white, fontSize: 22, fontWeight: "bold" }}
-      />
+     
     </ScrollView>
   );
 };

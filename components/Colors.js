@@ -11,6 +11,7 @@ export const COLORS = {
   consultationbg: "#95a7cc",
   warning: "#EEFFDC",
   chatheader: "#EDFFFD",
+  Issacolor:'#034b59',
 };
 export const width = Dimensions.get("screen").width;
 export const height = Dimensions.get("screen").height;

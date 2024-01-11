@@ -1,4 +1,4 @@
-import React, { Component } from "react";
+import React, { useState,useEffect } from "react";
 import {
   View,
   Text,
@@ -6,63 +6,107 @@ import {
   FlatList,
   StyleSheet,
   SafeAreaView,
+  ActivityIndicator
 } from "react-native";
 import Header from "../../components/Header";
 import { COLORS, height, width } from "../../components/Colors";
 import { Avatar } from "react-native-elements";
 // import { Avatar } from "react-native-badge-avatar";
 import { useNavigation } from "@react-navigation/native";
-
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import Spinner from "react-native-loading-spinner-overlay";
+import Url from "../../Url";
 const AllDoctors = () => {
+
+
+  const [Doctors, setDoctors] = useState([])
+  const [loading,isLoading]=useState(false)
+  useEffect(() => {
+    const FetchDoctors = async () => {
+      isLoading(true)
+      const token = await AsyncStorage.getItem('token')
+      if (!token) {
+        return 
+      }
+      try {
+        var myHeaders = new Headers();
+        myHeaders.append("Authorization", `JWT ${token}`);
+
+        var requestOptions = {
+          method: 'GET',
+          headers: myHeaders,
+          redirect: 'follow'
+        };
+
+        await fetch(`${Url}/patients/doctors/`, requestOptions)
+          .then(response => response.json())
+          .then(result => {
+            // console.log(result)
+            setDoctors(result)
+            isLoading(false)
+          })
+          .catch(error => {
+            console.log('error', error)
+            isLoading(false)
+          });
+              } catch (error) {
+                console.log(error)
+              }
+    }
+    FetchDoctors()
+  },[])
   const navigation = useNavigation();
-  const Doctors = [
-    {
-      name: "Dr.Jules",
-      description: "Lorem ipsum dotor sit amet consecteur.",
-      available: "12h30 -17h30 ",
-      image: require("../../assets/Drjules.png"),
-    },
-    {
-      name: "Dr.james",
-      description: "Lorem ipsum dotor sit amet consecteur.",
-      available: "12h30 -17h30 ",
-      image: require("../../assets/DrJjames.png"),
-    },
-    {
-      name: "Dr.Anne",
-      description: "Lorem ipsum dotor sit amet consecteur.",
-      available: "13h30 -17h30",
-      image: require("../../assets/DrAnne.png"),
-    },
-    {
-      name: "Dr.Jeanne",
-      description: "Lorem ipsum dotor sit amet consecteur.",
-      available: "12h30 -17h30 ",
-      image: require("../../assets/Drjeanne.png"),
-    },
-    {
-      name: "Dr.Jeanne",
-      description:
-        "Lorem ipsum dotor sit amet consecteur.Lorem ipsum dotor sit amet consecteur.Lorem ipsum dotor sit amet consecteur.Lorem ipsum dotor sit amet consecteur.Lorem ipsum dotor sit amet consecteur.",
-      available: "12h30 -17h30 ",
-      image: require("../../assets/Drjeanne.png"),
-    },
-    {
-      name: "Dr.Jeanne",
-      description: "Lorem ipsum dotor sit amet consecteur.",
-      available: "12h30 -17h30 ",
-      image: require("../../assets/Drjeanne.png"),
-    },
-    {
-      name: "Dr.Frank",
-      description: "Lorem ipsum dotor sit amet consecteur.",
-      available: "12h30 -17h30 ",
-      image: require("../../assets/DrFrank.png"),
-    },
-  ];
+  // const Doctors = [
+  //   {
+  //     name: "Dr.Jules",
+  //     description: "Lorem ipsum dotor sit amet consecteur.",
+  //     available: "12h30 -17h30 ",
+  //     image: require("../../assets/Drjules.png"),
+  //   },
+  //   {
+  //     name: "Dr.james",
+  //     description: "Lorem ipsum dotor sit amet consecteur.",
+  //     available: "12h30 -17h30 ",
+  //     image: require("../../assets/DrJjames.png"),
+  //   },
+  //   {
+  //     name: "Dr.Anne",
+  //     description: "Lorem ipsum dotor sit amet consecteur.",
+  //     available: "13h30 -17h30",
+  //     image: require("../../assets/DrAnne.png"),
+  //   },
+  //   {
+  //     name: "Dr.Jeanne",
+  //     description: "Lorem ipsum dotor sit amet consecteur.",
+  //     available: "12h30 -17h30 ",
+  //     image: require("../../assets/Drjeanne.png"),
+  //   },
+  //   {
+  //     name: "Dr.Jeanne",
+  //     description:
+  //       "Lorem ipsum dotor sit amet consecteur.Lorem ipsum dotor sit amet consecteur.Lorem ipsum dotor sit amet consecteur.Lorem ipsum dotor sit amet consecteur.Lorem ipsum dotor sit amet consecteur.",
+  //     available: "12h30 -17h30 ",
+  //     image: require("../../assets/Drjeanne.png"),
+  //   },
+  //   {
+  //     name: "Dr.Jeanne",
+  //     description: "Lorem ipsum dotor sit amet consecteur.",
+  //     available: "12h30 -17h30 ",
+  //     image: require("../../assets/Drjeanne.png"),
+  //   },
+  //   {
+  //     name: "Dr.Frank",
+  //     description: "Lorem ipsum dotor sit amet consecteur.",
+  //     available: "12h30 -17h30 ",
+  //     image: require("../../assets/DrFrank.png"),
+  //   },
+  // ];
+
+  
 
   return (
     <View style={{ flex: 1, padding: width / 40 }}>
+    <Spinner visible={loading} color={COLORS.Issacolor} />
       <View
         style={{
           backgroundColor: COLORS.warning,
@@ -112,9 +156,10 @@ const AllDoctors = () => {
               <TouchableOpacity
                 onPress={() =>
                   navigation.navigate("chat", {
-                    name: item.name,
-                    image: item.image,
+                    name: item.personal_information.username,
+                    image: item.personal_information.profile_image,
                     available: item.available,
+                    id:item.personal_information.id
                   })
                 }
                 style={{
@@ -138,7 +183,7 @@ const AllDoctors = () => {
                   }}
                 />
                 <Avatar
-                  source={item.image}
+                  source={{uri:item.personal_information.profile_image}}
                   size="medium"
                   containerStyle={{
                     borderColor: COLORS.primary,
@@ -146,7 +191,7 @@ const AllDoctors = () => {
                   rounded
                 />
 
-                <Text style={{ fontSize: 13 }}>{item.name}</Text>
+                {/* <Text style={{ fontSize: 13 }}>{item.name}</Text> */}
               </TouchableOpacity>
             );
           }}
@@ -172,10 +217,7 @@ const AllDoctors = () => {
                   navigation.navigate("consultation", {
                     screen: "doctorDetails",
                     params: {
-                      name: item.name,
-                      image: item.image,
-                      available: item.available,
-                      description: item.description,
+                      doctorDetail:item
                     },
                   })
                 }
@@ -186,20 +228,22 @@ const AllDoctors = () => {
                   justifyContent: "space-between",
                 }}
               >
-                <Avatar source={item.image} size="medium" rounded />
-                <View>
-                  <Text style={{ fontSize: 17, fontWeight: "600" }}>
-                    {item.name}
+                <View className="flex flex-row items-center justify-center">
+                  <Avatar source={{uri:item?.personal_information?.profile_image || null}} size="medium" rounded />
+                <View className="ml-3">
+                  <Text className="text-Capitalize" style={{ fontSize: 17, fontWeight: "600" }}>
+                    {item.personal_information.username}
                   </Text>
-                  <Text
+                  <Text className="text-xs"
                     style={{ maxWidth: width / 2.6, maxHeight: height / 19 }}
                   >
-                    {item.description}
+                    {item?.description || 'Be Okay Doctor'}
                   </Text>
                 </View>
+                </View>
                 <View>
-                  <Text style={{ fontWeight: "600" }}>Available</Text>
-                  <Text>{item.available}</Text>
+                  <Text style={{ fontWeight: "600" }} className="text-md">Available</Text>
+                  <Text>{item.available || '08:00h - 17:00h'}</Text>
                 </View>
               </TouchableOpacity>
             );

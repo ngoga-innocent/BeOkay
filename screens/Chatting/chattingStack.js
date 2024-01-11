@@ -3,6 +3,7 @@ import { View, Text } from "react-native";
 import { createStackNavigator } from "@react-navigation/stack";
 import AllDoctors from "./AllDoctors";
 import Chatpage from "./Chatpage";
+import PdfViewer from "./PdfViewer";
 
 const ChattingStack = () => {
   const Chat = createStackNavigator();
@@ -17,6 +18,11 @@ const ChattingStack = () => {
         name="chat"
         component={Chatpage}
         options={{ headerShown: false }}
+      />
+      <Chat.Screen
+        name="pdfView"
+        component={PdfViewer}
+        options={{headerShown:false}}
       />
     </Chat.Navigator>
   );

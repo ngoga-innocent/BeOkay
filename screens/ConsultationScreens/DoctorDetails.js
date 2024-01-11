@@ -9,6 +9,8 @@ import {
   Button,
   Platform,
   FlatList,
+  ActivityIndicator,
+  TextInput
 } from "react-native";
 import { COLORS, height, width } from "../../components/Colors";
 import AntDesign from "react-native-vector-icons/AntDesign";
@@ -16,12 +18,21 @@ import Entypo from "react-native-vector-icons/Entypo";
 import FontAwesome5Icon from "react-native-vector-icons/FontAwesome5";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import moment from "moment";
-
+import { useEffect } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import Url from "../../Url";
+import Spinner from "react-native-loading-spinner-overlay";
+import createPayment from "../../components/createPayment";
+import Toast from "react-native-toast-message";
+import { showToast } from "../../components/Toast";
 const DoctorDetails = ({ navigation, route }) => {
   const [selectedDate, setSelectedDate] = useState("");
 
-  const name = route.params.name;
+  const { doctorDetail } = route.params;
+  console.log(doctorDetail)
+  const available=doctorDetail?.availabilities || []
   const description = route.params.description;
+  const name=route?.params?.name || 'name'
   const [rating, setRating] = useState(4);
   const [date, setDate] = useState(new Date());
   const [time, setTime] = useState(new Date());
@@ -30,115 +41,36 @@ const DoctorDetails = ({ navigation, route }) => {
   const [availableHours, setAvailableHours] = useState([]);
   const [choosenIndex, setChoosen] = useState();
   const [selectedHour, setSelecetedHour] = useState();
+  const [availability_id, setAvailabilityId] = useState('')
+  const [timeLoading, setDateLoading] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [phone, setPhoneNumber] = useState()
+  const [choosenDate, setChoosenDate] = useState('')
+  const [choosenTime,setChoosenTime]=useState('')
+  const [confirmAppoint,setConfirmAppoint]=useState(false)
   const currentDate = new Date();
   const options = { weekday: "short" };
   //custom availability not well handled because of NO idea
+//   useEffect(() => {
+//     const updateState = () => {
+//     setAvailable(doctorDetail?.personal_information?.avaibilities || [])
+//     }
+//     updateState()
+  // },[])
+  const uniqueCombinations = {};
+  const uniqueItemsArray = available.filter((item) => {
+  const key = `${item?.starting_date?.split('T')[0]}`;
+ 
+  // If the key is not already in the object, add the key and return true (include the item)
+  if (!uniqueCombinations[key]) {
+    uniqueCombinations[key] = true;
+    return true;
+  }
 
-  const availability = [
-    {
-      date: currentDate.toLocaleDateString(undefined, {
-        weekday: "short",
-      }),
-      hours: [
-        "08:00 AM",
-        "9:00 AM",
-        "10:00 AM",
-        "02:00",
-        "03:00",
-        "04:00",
-        "5:00",
-      ],
-    },
-    {
-      date: new Date(
-        currentDate.getTime() + 1 * 24 * 60 * 60 * 1000
-      ).toLocaleDateString(undefined, {
-        weekday: "short",
-      }),
-      hours: [
-        "08:00 AM",
-        "9:00 AM",
-        "10:00 AM",
-        "02:00 PM",
-        "03:00 PM",
-        "04:00 PM",
-        "5:00 PM",
-      ],
-    },
-    {
-      date: new Date(
-        currentDate.getTime() + 2 * 24 * 60 * 60 * 1000
-      ).toLocaleDateString(undefined, {
-        weekday: "short",
-      }),
-      hours: [
-        "08:00 AM",
-        "9:00 AM",
-        "10:00 AM",
-        "02:00 PM",
-        "03:00 PM",
-        "04:00 PM",
-        "5:00 PM",
-      ],
-    },
-    {
-      date: new Date(
-        currentDate.getTime() + 3 * 24 * 60 * 60 * 1000
-      ).toLocaleDateString(undefined, {
-        weekday: "short",
-      }),
-      hours: [
-        "08:00 AM",
-        "9:00 AM",
-        "10:00 AM",
-        "02:00 PM",
-        "03:00 PM",
-        "04:00 PM",
-        "5:00 PM",
-      ],
-    },
-    {
-      date: new Date(
-        currentDate.getTime() + 4 * 24 * 60 * 60 * 1000
-      ).toLocaleDateString(undefined, {
-        weekday: "short",
-      }),
-      hours: [
-        "08:00 AM",
-        "9:00 AM",
-        "10:00 AM",
-        "02:00 PM",
-        "03:00 PM",
-        "04:00 PM",
-        "5:00 PM",
-      ],
-    },
-    {
-      date: new Date(
-        currentDate.getTime() + 5 * 24 * 60 * 60 * 1000
-      ).toLocaleDateString(undefined, {
-        weekday: "short",
-      }),
-      hours: [
-        "08:00 AM",
-        "9:00 AM",
-        "10:00 AM",
-        "02:00 PM",
-        "03:00 PM",
-        "04:00 PM",
-        "5:00 PM",
-      ],
-    },
-    {
-      date: new Date(
-        currentDate.getTime() + 6 * 24 * 60 * 60 * 1000
-      ).toLocaleDateString(undefined, {
-        weekday: "short",
-      }),
-      hours: ["08:00 PM", "9:00 PM", "04:00 PM", "5:00 PM"],
-    },
-  ];
-
+  // If the key is already in the object, return false (exclude the item)
+  return false;
+  });
+  
   //end Custom Availability
   const handleDateChange = (event, selectedDate) => {
     const currentDate = selectedDate || date;
@@ -157,10 +89,118 @@ const DoctorDetails = ({ navigation, route }) => {
   const togglePickerTime = () => {
     setShowPicker1(!showPicker1);
   };
-  const chooseDate = (item, index) => {
+  const ChooseAvailability = (availability_id,index,start_time,end_time) => {
+    setSelecetedHour(index)
+    setAvailabilityId(availability_id)
+    setChoosenTime(`${start_time}-${end_time}`)
+    //rconsole.log(availability_id)
+  }
+  const chooseDate = async(date, index) => {
     setChoosen(index);
-    setAvailableHours(item);
+    setChoosenDate(date)
+    setDateLoading(true)
+    const token = await AsyncStorage.getItem('token')
+    if (!token) {
+      return 
+    }
+    const doctor_id=doctorDetail.id
+    try {
+      var myHeaders = new Headers();
+      myHeaders.append("Authorization", `JWT ${token}`);
+
+      var requestOptions = {
+        method: 'GET',
+        headers: myHeaders,
+        redirect: 'follow'
+      };
+
+      fetch(`${Url}/doctor/availabilities-by-date/?date=${date}&doctor_id=${doctor_id}`, requestOptions)
+        .then(response => response.json())
+        .then(result => {
+          setAvailableHours(result)
+          setDateLoading(false)
+        })
+        .catch(error => console.log('error', error));
+    } catch (error) {
+      console.log(error)
+    }
+    // setAvailableHours(date);
   };
+  const BookAppointment = async () => {
+    // navigation.navigate("consultation", {
+    //         screen: "payment",
+    //         params: {
+    //           next: "success",
+    //         },
+    //       })
+    const token = await AsyncStorage.getItem('token')
+    
+    if (!token) {
+      return
+    }
+    setLoading(true)
+    const paymentStatus = await createPayment(phone, 4000)
+    if (!paymentStatus.success) {
+      return alert('unable to confirm payment please try again later')
+    }
+    try {
+      console.log(doctorDetail.id,availability_id)
+
+      var myHeaders = new Headers()
+      myHeaders.append('Authorization', `JWT ${token}`)
+      myHeaders.append("Content-Type", "application/json");
+    var raw=JSON.stringify({
+    "doctor": doctorDetail.id,
+    "service": "General Health",
+    "doctor_availability": availability_id,
+    "consultation_type": "online",
+    "consultation_note": ""
+    })
+    var requestOptions = {
+      method: "POST",
+      headers: myHeaders,
+      body: raw,
+      redirect:'follow'
+      }
+      const response=await fetch(`${Url}/patients/appointment/`, requestOptions)
+      const result=await response.json()
+      if (!response.ok) {
+        setLoading(false)
+        Toast.show({
+          type: 'error',
+          text1: 'Appointment not Confirmed',
+          text2: `${result[0]}`,
+          visibilityTime: 5000, // 5 seconds
+          position: 'top',
+          autoHide: true,
+          bottomOffset: 40,
+          swipeable:true
+        });
+      }
+        setLoading(false)
+        Toast.show({
+          type: 'success',
+          text1: 'Appointment Confirmed',
+          text2: `Appointment with ${doctorDetail?.personal_information?.full_name} on ${choosenDate} at ${choosenTime}`,
+          visibilityTime: 5000, // 5 seconds
+          position: 'top',
+          autoHide: true,
+          bottomOffset: 40,
+          swipeable: true,
+          topOffset: 40,
+          
+        });
+      
+      navigation.navigate("consultation", {
+            screen: "payment",
+            params: {
+              next: "success",
+            },
+          })
+    } catch (error) {
+      console.log(error)
+    }
+  }
   const ratingStars = [1, 2, 3, 4, 5];
   const doctor = {
     image: require("../../assets/profile.jpeg"),
@@ -205,8 +245,12 @@ const DoctorDetails = ({ navigation, route }) => {
       </View>
     );
   };
+  
   return (
     <View style={{ flex: 1 }}>
+      
+      
+      <Spinner visible={loading} color={COLORS.Issacolor} />
       <View
         style={{
           backgroundColor: COLORS.primary,
@@ -216,9 +260,11 @@ const DoctorDetails = ({ navigation, route }) => {
           paddingHorizontal: width / 16,
         }}
       >
+        <Toast />
         <TouchableOpacity style={{ marginTop: height / 30 }}>
           <AntDesign name="arrowleft" color={COLORS.white} size={30} />
         </TouchableOpacity>
+        
         <View
           style={{
             marginTop: height / 40,
@@ -227,7 +273,7 @@ const DoctorDetails = ({ navigation, route }) => {
           }}
         >
           <Image
-            source={doctor.image}
+            source={{uri:doctorDetail?.personal_information?.profile_image}}
             style={{
               width: width / 4,
               height: width / 4,
@@ -241,9 +287,9 @@ const DoctorDetails = ({ navigation, route }) => {
             <Text
               style={{ color: COLORS.white, fontWeight: "bold", fontSize: 18 }}
             >
-              {name}
+              {doctorDetail?.personal_information?.full_name}
             </Text>
-            <Text style={{ color: COLORS.warning }}>{doctor.current}</Text>
+            <Text style={{ color: COLORS.warning }}>{doctorDetail?.personal_information?.specialities||doctor.current}</Text>
             <View style={{ flexDirection: "row" }}>
               {ratingStars.map((item, index) => {
                 return (
@@ -283,7 +329,7 @@ const DoctorDetails = ({ navigation, route }) => {
           Biography
         </Text>
         <Text style={{ maxWidth: "100%", maxHeight: height / 10 }}>
-          {description}
+          {doctorDetail?.personal_information?.description||`${doctorDetail?.personal_information?.full_name} has not yet added Biography`}
         </Text>
         <Text
           style={{
@@ -334,12 +380,13 @@ const DoctorDetails = ({ navigation, route }) => {
           Schedule
         </Text>
       </View>
+      {available.length != 0 ? <>
       <View>
         <ScrollView horizontal={true} showsHorizontalScrollIndicator={false}>
-          {availability.map((item, index) => {
+          {uniqueItemsArray?.map((item, index) => {
             return (
               <TouchableOpacity
-                onPress={() => chooseDate(item.hours, index)}
+                onPress={() => chooseDate(item?.starting_date?.split("T")[0].split("/")[0], index)}
                 key={index}
                 style={{
                   paddingHorizontal: width / 30,
@@ -353,8 +400,8 @@ const DoctorDetails = ({ navigation, route }) => {
                     choosenIndex === index ? COLORS.primary : null,
                 }}
               >
-                <Text>{item.date.split(",")[0]}</Text>
-                <Text>{item.date.split(",")[1].split("/")[0]}</Text>
+                <Text>{item?.start_day} </Text>
+                <Text>{item?.starting_date?.split("T")[0].split("/")[0]}</Text>
               </TouchableOpacity>
             );
           })}
@@ -371,29 +418,52 @@ const DoctorDetails = ({ navigation, route }) => {
       >
         Select Time
       </Text>
+      {timeLoading && <ActivityIndicator color={COLORS.Issacolor} size="large" />}
       <FlatList
-        numColumns={3}
+        className="px-1"
+        numColumns={2}
         data={availableHours}
+        keyExtractor={(item, index) => index.toString()} 
         renderItem={({ item, index }) => {
           return (
             <TouchableOpacity
-              onPress={() => setSelecetedHour(index)}
+              onPress={() => ChooseAvailability(item.id,index,item?.start_time,item?.end_time)}
               style={{
-                marginLeft: width / 30,
-                borderRadius: width / 30,
-                borderWidth: 1,
-                paddingHorizontal: width / 15,
-                paddingVertical: height / 160,
-                alignItems: "center",
-                marginBottom: height / 90,
+                
                 backgroundColor: selectedHour === index ? COLORS.primary : null,
               }}
+              className="border rounded-md px-1 py-1 mx-1 "
             >
-              <Text>{item}</Text>
+              <Text className="text-sm font-bold">{item?.start_time} - {item?.end_time}</Text>
             </TouchableOpacity>
           );
         }}
       />
+      <TouchableOpacity onPress={()=>showToast()}>
+        <Text>Show Toast</Text>
+      </TouchableOpacity>
+      {confirmAppoint && <>
+        <View style={{ backgroundColor: COLORS.Issacolor, bottom: 0, position: 'absolute', width: '100%' }} className="flex-1  bottom-10 z-20 rounded-t-3xl  px-8 py-3 ">
+          <Text className="text-orange-500 font-bold">Are you sure you want to confirm this Appointment on {choosenDate} at {choosenTime} with { doctorDetail?.personal_information?.full_name}?</Text>
+        <View className="flex flex-row justify-between items-center">
+          <Text className="text-white font-bold text-lg py-3">Confirm Appointment</Text>
+          <TouchableOpacity onPress={()=>setConfirmAppoint(false)}>
+            <Entypo name="circle-with-cross" color='orange' size={30} />
+          </TouchableOpacity>
+        </View>
+        <TextInput
+          placeholder="Enter phone number"
+          keyboardType="numeric"
+          className="border border-white py-2 rounded-md px-3 text-white"
+          placeholderTextColor={COLORS.white}
+          value={phone}
+          onChangeText={(text)=>setPhoneNumber(text)}
+        />
+        <TouchableOpacity className="rounded-lg bg-white py-2 items-center my-2" onPress={()=>BookAppointment()}>
+          <Text className="text-gray font-bold">Pay for Appointment</Text>
+        </TouchableOpacity>
+      </View>
+      </>}
       {/* <View>
         <View
           style={{
@@ -469,14 +539,7 @@ const DoctorDetails = ({ navigation, route }) => {
         )}
       </View> */}
       <TouchableOpacity
-        onPress={() =>
-          navigation.navigate("consultation", {
-            screen: "payment",
-            params: {
-              next: "success",
-            },
-          })
-        }
+        onPress={() =>setConfirmAppoint(true)}
         style={{
           height: height / 20,
           width: "95%",
@@ -492,6 +555,7 @@ const DoctorDetails = ({ navigation, route }) => {
           Book Appointment
         </Text>
       </TouchableOpacity>
+      </> : <Text className="mx-4 font-bold text-lg">No Avaible Time for {doctorDetail?.personal_information?.full_name},check for other Beokay Doctors</Text>}
     </View>
   );
 };

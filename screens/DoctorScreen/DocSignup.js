@@ -89,7 +89,7 @@ const DocSignup = ({ route, navigation }) => {
         email: Email,
         phone_number: number,
         password: password,
-        user_type: "patient",
+        user_type: "doctor",
       });
 
       var requestOptions = {

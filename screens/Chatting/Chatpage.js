@@ -5,12 +5,17 @@ import { width, height, COLORS } from "../../components/Colors";
 import { TouchableOpacity } from "react-native-gesture-handler";
 import Feather from "react-native-vector-icons/Feather";
 import FontAwasome from "react-native-vector-icons/FontAwesome";
+import AntDesign from 'react-native-vector-icons/AntDesign'
 import MaterialIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
+import * as IntentLauncher from 'react-native-intent-launcher'
 import AudioRecorderPlayer from "react-native-audio-recorder-player";
 import FontAwesome from "react-native-vector-icons/FontAwesome";
-import { PDFView } from "react-native-view-pdf";
+import PDFView from 'react-native-view-pdf'
+import * as Sharing from 'expo-sharing'
+// import Pdf from 'react-native-pdf';
+
 import {
   Bubble,
   GiftedChat,
@@ -21,6 +26,8 @@ import {
   Message,
 } from "react-native-gifted-chat";
 import { Audio, Video } from "expo-av";
+import { Linking } from "react-native";
+import * as FileSystem from 'expo-file-system'
 
 const Chatpage = ({ navigation, route }) => {
   const name = route.params.name;
@@ -29,7 +36,7 @@ const Chatpage = ({ navigation, route }) => {
 
   const [messages, setMessages] = useState([]);
   const [audioPlayer, setAudioPlayer] = useState(null);
-
+  const [pdf,setPdf]=useState('')
   useEffect(() => {
     setMessages([
       {
@@ -55,9 +62,10 @@ const Chatpage = ({ navigation, route }) => {
     return (
       <Bubble
         {...props}
-        renderMessageDocument={(messageProps) => (
-          <DocumentMessage {...messageProps} />
-        )}
+        
+        // renderMessageDocument={(messageProps) => (
+        //   <DocumentMessage {...messageProps} />
+        // )}
         renderMessageAudio={(messageProps) => (
           <AudioMessage {...messageProps} onPress={handleAudioPress} />
         )}
@@ -73,23 +81,23 @@ const Chatpage = ({ navigation, route }) => {
       />
     );
   };
-  const DocumentMessage = ({ currentMessage }) => {
-    const { document } = currentMessage;
+  // const DocumentMessage = ({ currentMessage }) => {
+  //   const { document } = currentMessage;
 
-    const handleDocumentPress = () => {
-      // Implement your logic to handle the document press
-      // For example, you can open the PDF in a separate screen or download it.
-      // You can use a third-party library like 'react-native-pdf' to handle PDF rendering.
-    };
+  //   const handleDocumentPress = () => {
+  //     // Implement your logic to handle the document press
+  //     // For example, you can open the PDF in a separate screen or download it.
+  //     // You can use a third-party library like 'react-native-pdf' to handle PDF rendering.
+  //   };
 
-    return (
-      <TouchableOpacity onPress={handleDocumentPress}>
-        <View style={{ backgroundColor: "white", padding: 10 }}>
-          <Text>{document.name}</Text>
-        </View>
-      </TouchableOpacity>
-    );
-  };
+  //   return (
+  //     <TouchableOpacity onPress={handleDocumentPress}>
+  //       <View style={{ backgroundColor: "white", padding: 10 }}>
+  //         <Text>{document.name}</Text>
+  //       </View>
+  //     </TouchableOpacity>
+  //   );
+  // };
   const handleRecordVoice = async () => {
     try {
       const audioPath = await audioRecorderPlayer.startRecorder();
@@ -111,28 +119,8 @@ const Chatpage = ({ navigation, route }) => {
     return (
       <Send {...props}>
         <View style={{ flexDirection: "row" }}>
-          <TouchableOpacity onPress={handleRecordVoice}>
-            <View
-              style={{
-                alignSelf: "center",
-                width: width / 10,
-                height: width / 10,
-                borderRadius: width / 20,
-                backgroundColor: COLORS.black,
-                alignItems: "center",
-                justifyContent: "center",
-                marginBottom: 2,
-                marginRight: 7,
-              }}
-            >
-              <MaterialIcons
-                name="microphone"
-                color={COLORS.doctor}
-                size={30}
-              />
-            </View>
-          </TouchableOpacity>
-          <TouchableWithoutFeedback>
+          
+          <TouchableOpacity>
             <View
               style={{
                 alignSelf: "center",
@@ -148,7 +136,7 @@ const Chatpage = ({ navigation, route }) => {
             >
               <MaterialIcons name="send" color={COLORS.doctor} size={30} />
             </View>
-          </TouchableWithoutFeedback>
+          </TouchableOpacity>
         </View>
       </Send>
     );
@@ -169,7 +157,7 @@ const Chatpage = ({ navigation, route }) => {
           await ImagePicker.requestMediaLibraryPermissionsAsync();
 
         if (!permissionResult.granted) {
-          console.log("Permission to access media library denied");
+          alert("Permission to access media library denied");
           return;
         }
 
@@ -178,8 +166,9 @@ const Chatpage = ({ navigation, route }) => {
           allowsMultipleSelection: true,
         });
 
-        if (!result.cancelled) {
-          const selectedImages = result.selected.map((image) => {
+        if (!result.canceled) {
+        
+          const selectedImages = result.assets.map((image) => {
             const { uri, width, height } = image;
             return {
               _id: Math.round(Math.random() * 1000000),
@@ -221,8 +210,8 @@ const Chatpage = ({ navigation, route }) => {
           allowsMultipleSelection: true,
         });
 
-        if (!result.cancelled) {
-          const selectedVideos = result.selected.map((video) => {
+        if (!result.canceled) {
+          const selectedVideos = result.assets.map((video) => {
             const { uri, width, height, duration } = video;
 
             const videoMessage = {
@@ -259,29 +248,31 @@ const Chatpage = ({ navigation, route }) => {
           type: "application/pdf",
         });
 
-        if (result.type === "success") {
+        if (!result.canceled) {
           // Handle the picked document here
-
-          const { uri, name, size } = result;
-
-          const documentMessage = {
-            _id: Math.round(Math.random() * 1000000),
-            file: {
-              uri,
-              name,
-              size,
-            },
-            user: {
-              _id: 1,
-            },
-            createdAt: new Date(),
-          };
-          setMessages((previousMessages) =>
-            GiftedChat.append(previousMessages, [documentMessage])
-          );
+          result.assets.map((file) => {
+            const documentMessage = {
+              _id: Math.round(Math.random() * 1000000),
+              file: {
+                uri: file.uri,
+                name: file.name,
+                size: file.size,
+              },
+              user: {
+                _id: 1,
+              },
+              createdAt: new Date(),
+            };
+            setMessages((previousMessages) =>
+              GiftedChat.append(previousMessages, [documentMessage])
+            );
+          })
+  
+         
+          
           console.log("Picked document:", result);
         } else {
-          console.log("Document picking cancelled");
+          console.log("Document picking cancelled", result);
         }
       } catch (error) {
         console.log("Error picking document:", error);
@@ -294,8 +285,9 @@ const Chatpage = ({ navigation, route }) => {
           Document: handleDocumentPick,
           Image: handleImagePick,
           Video: handleVideoPick,
+          Audio: null,
           Cancel: () => {
-            console.log("Cancel");
+            console.log("Cancel 0736803237");
           },
         }}
         onSend={(args) => console.log(args)}
@@ -341,17 +333,55 @@ const Chatpage = ({ navigation, route }) => {
   //       console.log("Failed to load audio", error);
   //     }
   //   };
+
+  const handleDocumentOpen = async (message) => {
+    // console.log(message)
+     
+    const loadPdf = async () => {
+      try {
+        const fileUri = `${FileSystem.cacheDirectory}${message.name}`;
+        await FileSystem.copyAsync({ from: message.uri, to: fileUri });
+ await FileSystem.downloadAsync(file.uri, fileUri);
+        await Sharing.openAsync(fileUri);
+      } catch (error) {
+        console.error('Error loading PDF:', error);
+      }
+    };
+
+  
+  
+
+  // return (
+  //   <View style={{ flex: 1 }}>
+  //     {loadPdf() ? (
+  //       <PDFView
+  //         fadeInDuration={250.0}
+  //         style={{ flex: 1 }}
+  //         resource={loadPdf()}
+  //         resourceType="file"
+  //       />
+  //     ) : (
+  //       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+  //         <Text>Loading PDF...</Text>
+  //       </View>
+  //     )}
+  //   </View>
+  // );
+  }
+
   const CustomMessage = (props) => {
     const { currentMessage } = props;
-
+   
     if (currentMessage.file) {
+       
       return (
-        <View>
-          <Text>{currentMessage.file.name}</Text>
-          <TouchableOpacity
-          // onPress={() => handleDocumentOpen(currentMessage.file.uri)}
+        <View className=" my-3 py-1 px-2 rounded-lg bg-gray-200 border z-10  mx-8">
+          
+          <TouchableOpacity className="flex items-center justify-center px-8"
+            onPress={() => handleDocumentOpen( currentMessage.file ) }
           >
-            <Text>Open Document</Text>
+            <AntDesign name="pdffile1" className="w-20 h-20" size={30} />
+            <Text className="text-blue-600 font-bold text-sm">{currentMessage.file.name}</Text>
           </TouchableOpacity>
         </View>
       );
@@ -405,18 +435,19 @@ const Chatpage = ({ navigation, route }) => {
           backgroundColor: COLORS.chatheader,
           borderRadius: width / 40,
           marginTop: height / 100,
+          alignItems:'center'
         }}
       >
-        <View style={{ flexDirection: "row", alignItems: "center" }}>
-          <Avatar source={image} size="medium" rounded />
+        <View style={{}} className=" flex flex-row items-center ">
+          <Avatar source={{uri:image}} size="medium" rounded />
           <View style={{ marginLeft: width / 40 }}>
-            <Text style={{ fontSize: 16, fontWeight: "700", marginBottom: 7 }}>
+            <Text style={{ fontSize: 16, fontWeight: "700" }}>
               {name}
             </Text>
             <Text>{available}</Text>
           </View>
         </View>
-        <View style={{ flexDirection: "row" }}>
+        <View style={{  }} className="flex flex-row gap-1">
           <TouchableOpacity
             style={{
               width: width / 10,
