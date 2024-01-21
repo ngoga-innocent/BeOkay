@@ -551,7 +551,10 @@ await fetch(`${Url}/doctor/appointments`, requestOptions)
           data={consultations}
           renderItem={({ item }) => {
             return (
-              <TouchableOpacity
+              <TouchableOpacity onPress={() => navigation.navigate('chatting', {
+                screen: 'chat', params: {
+                name:'Ngoga'
+              }})}
                 style={{
                   justifyContent: "center",
                   // alignItems: "center",
